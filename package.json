@@ -1,12 +1,39 @@
 {
-  "name": "blogdown",
+  "name": "blogmark",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "description": "A Node.js CLI tool that converts web blog posts to markdown files with frontmatter",
+  "main": "cli.js",
+  "bin": {
+    "blogmark": "./cli.js"
   },
-  "keywords": [],
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "scripts": {
+    "test": "node test.js",
+    "example": "node example.js",
+    "start": "node cli.js",
+    "global-install": "npm install -g .",
+    "global-uninstall": "npm uninstall -g blogmark"
+  },
+  "keywords": [
+    "blog",
+    "markdown",
+    "converter",
+    "cli",
+    "scraping"
+  ],
   "author": "LadyKerr",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.11.0",
+    "cheerio": "^1.1.2",
+    "commander": "^11.1.0",
+    "js-yaml": "^4.1.0",
+    "turndown": "^7.2.0"
+  },
+  "files": [
+    "cli.js",
+    "src/"
+  ]
 }

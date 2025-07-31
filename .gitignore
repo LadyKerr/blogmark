@@ -5,3 +5,30 @@ node_modules/
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Output directory
+output/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+
+# Coverage directory
+coverage/
+
+# Optional npm cache directory
+.npm
+
+# Output of 'npm pack'
+*.tgz
