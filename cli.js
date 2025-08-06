@@ -28,12 +28,78 @@ program
   });
 
 program
+  .command('bulk')
+  .description('Convert multiple URLs to markdown from a file or stdin')
+  .argument('[file]', 'File containing URLs (one per line) - if not provided, reads from stdin')
+  .option('-s, --save-dir <dir>', 'Custom output directory', './output')
+  .option('-c, --concurrency <number>', 'Number of concurrent requests', '3')
+  .option('-d, --delay <number>', 'Delay between requests in milliseconds', '1000')
+  .option('--no-continue', 'Stop on first error instead of continuing')
+  .action(async (file, options) => {
+    try {
+      let urls;
+      
+      if (file) {
+        // Read URLs from file
+        urls = await converter.parseUrlsFromFile(file);
+      } else {
+        // Read URLs from stdin
+        console.log('📝 Enter URLs (one per line). Press Ctrl+D (Unix) or Ctrl+Z (Windows) when done:\n');
+        
+        const rl = readline.createInterface({
+          input: process.stdin,
+          output: process.stdout
+        });
+
+        const inputUrls = [];
+        
+        for await (const line of rl) {
+          const url = line.trim();
+          if (url && !url.startsWith('#')) {
+            try {
+              new URL(url);
+              inputUrls.push(url);
+            } catch {
+              console.log(`⚠️  Skipping invalid URL: ${url}`);
+            }
+          }
+        }
+        
+        urls = inputUrls;
+      }
+
+      if (urls.length === 0) {
+        console.log('❌ No valid URLs found to process.');
+        process.exit(1);
+      }
+
+      const bulkOptions = {
+        outputDir: options.saveDir,
+        concurrency: parseInt(options.concurrency),
+        delay: parseInt(options.delay),
+        continueOnError: options.continue !== false
+      };
+
+      const results = await converter.convertUrlBulk(urls, bulkOptions);
+      
+      // Exit with appropriate code
+      process.exit(results.failed.length > 0 ? 1 : 0);
+      
+    } catch (error) {
+      console.error(`❌ Bulk conversion failed: ${error.message}`);
+      process.exit(1);
+    }
+  });
+
+program
   .command('interactive')
-  .description('Interactive mode - type #fetch <url> repeatedly')
+  .description('Interactive mode - type #fetch <url> or #bulk <file> repeatedly')
   .action(async () => {
     console.log('🔄 Entering interactive mode...');
-    console.log('Type "#fetch <url>" to convert a blog post');
-    console.log('Type "quit" or "exit" to exit\n');
+    console.log('Commands:');
+    console.log('  #fetch <url>   - Convert a single blog post');
+    console.log('  #bulk <file>   - Convert URLs from a file');
+    console.log('  quit/exit      - Exit interactive mode\n');
 
     const rl = readline.createInterface({
       input: process.stdin,
@@ -76,8 +142,38 @@ program
         } catch (error) {
           console.error(`❌ Conversion failed: ${error.message}\n`);
         }
+      } else if (input.startsWith('#bulk ')) {
+        const filepath = input.substring(6).trim();
+        
+        if (!filepath) {
+          console.log('❌ Please provide a file path: #bulk <file>');
+          rl.prompt();
+          return;
+        }
+
+        try {
+          const urls = await converter.parseUrlsFromFile(filepath);
+          
+          if (urls.length === 0) {
+            console.log('❌ No valid URLs found in file.');
+            rl.prompt();
+            return;
+          }
+
+          const bulkOptions = {
+            outputDir: './output',
+            concurrency: 3,
+            delay: 1000,
+            continueOnError: true
+          };
+
+          await converter.convertUrlBulk(urls, bulkOptions);
+          console.log('');
+        } catch (error) {
+          console.error(`❌ Bulk conversion failed: ${error.message}\n`);
+        }
       } else if (input) {
-        console.log('❌ Invalid command. Use "#fetch <url>" to convert a blog post.');
+        console.log('❌ Invalid command. Use "#fetch <url>" or "#bulk <file>".');
       }
       
       rl.prompt();

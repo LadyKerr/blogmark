@@ -65,6 +65,51 @@ blogmark fetch https://example.com/blog-post -o my-article.md
 blogmark fetch https://example.com/blog-post -s ./my-blogs
 ```
 
+### Bulk Conversion
+
+Convert multiple URLs from a file or stdin:
+
+```bash
+blogmark bulk [file]
+```
+
+#### Options
+
+- `-s, --save-dir <dir>` - Custom output directory (default: `./output`)
+- `-c, --concurrency <number>` - Number of concurrent requests (default: 3)
+- `-d, --delay <number>` - Delay between requests in milliseconds (default: 1000)
+- `--no-continue` - Stop on first error instead of continuing
+
+#### Examples
+
+```bash
+# Convert URLs from a file
+blogmark bulk urls.txt
+
+# Use custom settings
+blogmark bulk urls.txt --concurrency 5 --delay 2000 --save-dir ./articles
+
+# Read URLs from stdin
+echo "https://example.com/post1" | blogmark bulk
+
+# Using npm script
+npm run bulk urls.txt
+```
+
+#### URL File Format
+
+Create a text file with one URL per line:
+
+```
+# This is a comment (lines starting with # are ignored)
+https://example.com/blog-post-1
+https://dev.to/author/article-1
+https://medium.com/@author/article-2
+
+# Another comment
+https://blog.example.com/latest-post
+```
+
 ### Interactive Mode
 
 ```bash
@@ -72,7 +117,8 @@ blogmark interactive
 ```
 
 In interactive mode, you can:
-- Type `#fetch <url>` to convert a blog post
+- Type `#fetch <url>` to convert a single blog post
+- Type `#bulk <file>` to convert URLs from a file
 - Type `quit` or `exit` to exit
 
 Example session:
@@ -80,8 +126,16 @@ Example session:
 blogmark> #fetch https://example.com/article
 ✅ Saved to: ./output/example-article.md
 
-blogmark> #fetch https://dev.to/author/post
-✅ Saved to: ./output/author-post.md
+blogmark> #bulk urls.txt
+🚀 Starting bulk conversion of 5 URLs...
+📁 Output directory: ./output
+⚡ Concurrency: 3
+⏱️  Delay between requests: 1000ms
+
+[1/5] ✅ Success: article-1.md
+[2/5] ✅ Success: article-2.md
+...
+✅ 5 files saved to: ./output
 
 blogmark> quit
 👋 Goodbye!
@@ -90,8 +144,13 @@ blogmark> quit
 ## Features
 
 - **Smart Content Extraction**: Automatically detects main article content from various blog platforms (WordPress, Medium, dev.to, etc.)
+- **Bulk Conversion**: Convert hundreds of URLs efficiently with concurrent processing
+- **Rate Limiting**: Respectful to target servers with configurable delays and concurrency
 - **Clean Markdown Output**: Converts HTML to well-formatted markdown
 - **YAML Frontmatter**: Includes metadata like title, date, author, and URL
+- **Error Resilience**: Continues processing even if individual URLs fail
+- **Progress Tracking**: Real-time progress updates and detailed conversion summaries
+- **Flexible Input**: Support for files, stdin, and interactive modes
 - **Robust Error Handling**: Gracefully handles network errors and parsing issues
 - **Cross-Platform**: Works on Windows, macOS, and Linux
 

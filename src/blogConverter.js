@@ -1,6 +1,7 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
 const TurndownService = require('turndown');
+const turndownPluginGfm = require('turndown-plugin-gfm');
 const yaml = require('js-yaml');
 const fs = require('fs').promises;
 const path = require('path');
@@ -12,6 +13,9 @@ class BlogConverter {
       headingStyle: 'atx',
       codeBlockStyle: 'fenced'
     });
+
+    // Add GitHub Flavored Markdown plugin for table support
+    this.turndownService.use(turndownPluginGfm.gfm);
     
     // Remove unwanted elements
     this.turndownService.remove(['script', 'style', 'nav', 'header', 'footer', 'aside', '.ad', '.advertisement']);
@@ -37,13 +41,6 @@ class BlogConverter {
   extractMainContent(html, url) {
     const $ = cheerio.load(html);
     
-    // Remove unwanted elements first
-    const removeSelectors = [
-      'script',
-      'style',
-      'nav',
-      'header',
-      'footer',
     const selectors = [
       // === GitHub Blog Specific Selectors ===
       'main .post-content',
@@ -71,30 +68,11 @@ class BlogConverter {
       'article',
       '.content'
     ];
-      '.wp-block-post-content',
-      '.post-body',
-      '.article-content',
-      '.blog-post-content',
-      // Medium and dev.to
-      '.post-article-content',
-      '.article-body',
-      // Try getting everything in main but exclude certain elements
-      'main',
-      // Generic fallbacks
-      'main article',
-      '[role="main"] article',
-      'main .content',
-      'article',
-      '.content'
-    ];
 
     let content = '';
+    
     // Extract title
-    const h1Title = $('h1').first().text().trim();
-    const pageTitle = $('title').text().trim();
-    const ogTitle = $('meta[property="og:title"]').attr('content');
-    title = h1Title || pageTitle || ogTitle || 'Untitled';
-    title = $('h1').first().text().trim() || 
+    const title = $('h1').first().text().trim() || 
             $('title').text().trim() || 
             $('meta[property="og:title"]').attr('content') || 
             'Untitled';
@@ -104,9 +82,10 @@ class BlogConverter {
     const metaArticleAuthor = $('meta[property="article:author"]').attr('content');
     const authorClass = $('.author').first().text().trim();
     const bylineClass = $('.byline').first().text().trim();
-    author = metaAuthor || metaArticleAuthor || authorClass || bylineClass || '';
+    const author = metaAuthor || metaArticleAuthor || authorClass || bylineClass || '';
 
     // Extract publish date
+    let publishDate = '';
     const dateSelectors = [
       'meta[property="article:published_time"]',
       'meta[name="publish-date"]',
@@ -125,7 +104,6 @@ class BlogConverter {
         }
         if (publishDate) break;
       }
-    }
     }
 
     // Try to extract main content using specific selectors
@@ -312,6 +290,103 @@ class BlogConverter {
     } catch (error) {
       console.error(error.message);
       throw error;
+    }
+  }
+
+  async convertUrlBulk(urls, options = {}) {
+    const {
+      outputDir = './output',
+      concurrency = 3,
+      delay = 1000,
+      continueOnError = true
+    } = options;
+
+    console.log(`🚀 Starting bulk conversion of ${urls.length} URLs...`);
+    console.log(`📁 Output directory: ${outputDir}`);
+    console.log(`⚡ Concurrency: ${concurrency}`);
+    console.log(`⏱️  Delay between requests: ${delay}ms\n`);
+
+    const results = {
+      successful: [],
+      failed: [],
+      total: urls.length
+    };
+
+    // Process URLs in batches with concurrency limit
+    for (let i = 0; i < urls.length; i += concurrency) {
+      const batch = urls.slice(i, i + concurrency);
+      const batchPromises = batch.map(async (url, batchIndex) => {
+        const globalIndex = i + batchIndex + 1;
+        
+        try {
+          console.log(`[${globalIndex}/${urls.length}] 🔄 Processing: ${url}`);
+          
+          const filepath = await this.convertUrl(url, null, outputDir);
+          results.successful.push({ url, filepath });
+          
+          console.log(`[${globalIndex}/${urls.length}] ✅ Success: ${path.basename(filepath)}`);
+          
+        } catch (error) {
+          results.failed.push({ url, error: error.message });
+          console.log(`[${globalIndex}/${urls.length}] ❌ Failed: ${error.message}`);
+          
+          if (!continueOnError) {
+            throw error;
+          }
+        }
+        
+        // Add delay between requests to be respectful to servers
+        if (delay > 0 && globalIndex < urls.length) {
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      });
+
+      await Promise.allSettled(batchPromises);
+      console.log(''); // Empty line for better readability
+    }
+
+    // Print summary
+    console.log('📊 BULK CONVERSION SUMMARY');
+    console.log('=' .repeat(40));
+    console.log(`✅ Successful: ${results.successful.length}`);
+    console.log(`❌ Failed: ${results.failed.length}`);
+    console.log(`📈 Success Rate: ${((results.successful.length / results.total) * 100).toFixed(1)}%\n`);
+
+    if (results.failed.length > 0) {
+      console.log('❌ Failed URLs:');
+      results.failed.forEach((failure, index) => {
+        console.log(`   ${index + 1}. ${failure.url}`);
+        console.log(`      Error: ${failure.error}\n`);
+      });
+    }
+
+    if (results.successful.length > 0) {
+      console.log(`✅ ${results.successful.length} files saved to: ${outputDir}`);
+    }
+
+    return results;
+  }
+
+  async parseUrlsFromFile(filePath) {
+    try {
+      const content = await fs.readFile(filePath, 'utf8');
+      const urls = content
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line && !line.startsWith('#'))
+        .filter(line => {
+          try {
+            new URL(line);
+            return true;
+          } catch {
+            console.log(`⚠️  Skipping invalid URL: ${line}`);
+            return false;
+          }
+        });
+
+      return urls;
+    } catch (error) {
+      throw new Error(`Failed to read URL file: ${error.message}`);
     }
   }
 }

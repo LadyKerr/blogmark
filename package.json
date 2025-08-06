@@ -13,6 +13,7 @@
     "test": "node test.js",
     "example": "node example.js",
     "start": "node cli.js",
+    "bulk": "node cli.js bulk",
     "global-install": "npm install -g .",
     "global-uninstall": "npm uninstall -g blogmark"
   },
@@ -30,7 +31,8 @@
     "cheerio": "^1.1.2",
     "commander": "^11.1.0",
     "js-yaml": "^4.1.0",
-    "turndown": "^7.2.0"
+    "turndown": "^7.2.0",
+    "turndown-plugin-gfm": "^1.0.2"
   },
   "files": [
     "cli.js",
