@@ -122,7 +122,8 @@ In interactive mode, you can:
 - Type `quit` or `exit` to exit
 
 Example session:
-```
+
+```bash
 blogmark> #fetch https://example.com/article
 ✅ Saved to: ./output/example-article.md
 
