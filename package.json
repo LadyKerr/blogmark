@@ -1,5 +1,5 @@
 {
-  "name": "blogmark",
+  "name": "@ladykerr/blogmark",
   "version": "1.0.0",
   "description": "A Node.js CLI tool that converts web blog posts to markdown files with frontmatter",
   "main": "cli.js",
@@ -37,5 +37,9 @@
   "files": [
     "cli.js",
     "src/"
-  ]
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/LadyKerr/blogmark.git"
+  }
 }
